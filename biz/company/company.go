@@ -1,0 +1,4 @@
+package company
+
+func StartMotor() {
+}
