@@ -12,7 +12,7 @@ func StartMotor() {
 }
 
 func CheckLogged(ofTransit *motor.Convey) bool {
-	if ofTransit.GetMap("user_logged") != "yes" {
+	if ofTransit.GetMapped("user_logged") != "yes" {
 		ofTransit.PutError("there's no user logged")
 		return false
 	}
@@ -31,14 +31,14 @@ func handEnter(w http.ResponseWriter, r *http.Request) {
 	user := r.FormValue("user")
 	pass := r.FormValue("pass")
 	if transit.Open(client, user, pass) {
-		transit.SetMap("user_logged", "yes")
-		transit.SetMap("user_logged_name", user)
-		transit.SetMap("user_logged_client", client)
+		transit.SetMapped("user_logged", "yes")
+		transit.SetMapped("user_logged_name", user)
+		transit.SetMapped("user_logged_client", client)
 		transit.Set("enter", "success")
 	} else {
-		transit.SetMap("user_logged", "no")
-		transit.SetMap("user_logged_name", "")
-		transit.SetMap("user_logged_client", "")
+		transit.SetMapped("user_logged", "no")
+		transit.SetMapped("user_logged_name", "")
+		transit.SetMapped("user_logged_client", "")
 		transit.PutError("can't hand the entrance")
 	}
 	transit.Send()
@@ -47,7 +47,7 @@ func handEnter(w http.ResponseWriter, r *http.Request) {
 func handExit(w http.ResponseWriter, r *http.Request) {
 	transit := motor.Transit(w, r)
 	transit.Close()
-	transit.ClearMap()
+	transit.ClearMapped()
 	transit.Set("exit", "success")
 	transit.Send()
 }

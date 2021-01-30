@@ -8,6 +8,19 @@ import (
 	"golang.org/x/text/language"
 )
 
+type FormatType string
+
+const (
+	FormatString = "String"
+	FormatDate = "Date"
+	FormatCurrency = "Currency"
+)
+
+type Formatter struct {
+	Type FormatType
+	Pattern string
+}
+
 var languageMatcher = language.NewMatcher([]language.Tag{
 	language.Make("pt"),
 	language.Make("en"),
@@ -39,30 +52,30 @@ func (transit *Convey) GetDateActual() string {
 	return time.Now().Format(transit.GetDateFormat())
 }
 
-func (transit *Convey) Format(value interface{}) string {
+func (transit *Convey) FormatString(value interface{}) string {
 	return fmt.Sprintf("%s", value)
 }
 
-func (transit *Convey) PutFormatAs(column, as string) bool {
+func (transit *Convey) PutFormatStringAs(column, as string) bool {
 	value, err := transit.Take(column)
 	if err != nil {
 		transit.PutError(err)
 		transit.PutError("can't put the formatted of", column, "as", as)
 		return false
 	}
-	transit.Set(as, transit.Format(value))
+	transit.Set(as, transit.FormatString(value))
 	return true
 }
 
-func (transit *Convey) PutFormat(column string) bool {
-	return transit.PutFormatAs(column, column)
+func (transit *Convey) PutFormatString(column string) bool {
+	return transit.PutFormatStringAs(column, column)
 }
 
 func (transit *Convey) FormatDate(date interface{}) string {
 	if value, ok := date.(time.Time); ok {
 		return value.Format(transit.GetDateFormat())
 	}
-	return transit.Format(date)
+	return transit.FormatString(date)
 }
 
 func (transit *Convey) PutFormatDateAs(column, as string) bool {
@@ -88,7 +101,7 @@ func (transit *Convey) FormatCurrency(currency interface{}) string {
 			return fmt.Sprintf("%.2f", converted)
 		}
 	}
-	return transit.Format(currency)
+	return transit.FormatString(currency)
 }
 
 func (transit *Convey) PutFormatCurrencyAs(column, as string) bool {

@@ -138,15 +138,18 @@ func (transit *Convey) PutAll() bool {
 	return true
 }
 
-func (transit *Convey) PutAs(column, as string) bool {
+func (transit *Convey) PutAs(column, as string, format *Formatter) bool {
 	if !transit.takeValues() {
 		transit.PutError("can't put column", column, "as", as)
 		return false
 	}
-	transit.Set(as, transit.values[column])
+	value := transit.values[column]
+	if format != nil {
+	}
+	transit.Set(as, )
 	return true
 }
 
-func (transit *Convey) Put(column string) bool {
-	return transit.PutAs(column, column)
+func (transit *Convey) Put(column string, format *Formatter) bool {
+	return transit.PutAs(column, column, format)
 }

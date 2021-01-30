@@ -60,16 +60,16 @@ func (transit *Convey) Clear(name string, value interface{}) *Convey {
 	return transit
 }
 
-func (transit *Convey) GetMap(key string) string {
+func (transit *Convey) GetMapped(key string) string {
 	return transit.getSession().get(key)
 }
 
-func (transit *Convey) SetMap(key, value string) *Convey {
+func (transit *Convey) SetMapped(key, value string) *Convey {
 	transit.getSession().set(key, value)
 	return transit
 }
 
-func (transit *Convey) ClearMap() *Convey {
+func (transit *Convey) ClearMapped() *Convey {
 	transit.getSession().clear()
 	return transit
 }

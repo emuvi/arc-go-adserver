@@ -5,7 +5,7 @@ import (
 )
 
 func GetPersonOfUser(onTransit *motor.Convey) bool {
-	result := onTransit.GetMap("PersonOfUser")
+	result := onTransit.GetMapped("PersonOfUser")
 	if result == "" {
 		store := onTransit.Store()
 		if store == nil {
@@ -24,8 +24,8 @@ func GetPersonOfUser(onTransit *motor.Convey) bool {
 			onTransit.PutError(err.Error())
 			goto BadError
 		}
-		result := onTransit.Format(value)
-		onTransit.SetMap("PersonOfUser", result)
+		result := onTransit.FormatString(value)
+		onTransit.SetMapped("PersonOfUser", result)
 	}
 	if result != "" {
 		onTransit.Set("PersonOfUser", result)
