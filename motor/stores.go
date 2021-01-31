@@ -136,24 +136,37 @@ func (transit *Convey) Take(column string) (interface{}, error) {
 	return transit.values[column], nil
 }
 
+func (transit *Convey) checkFetchers(fetchers ...Fetcher) bool {
+	for idx, fetcher := range fetchers {
+		if fetcher.Column == "" {
+			if len(fetchers) > 1 {
+				transit.PutError("the fetcher number", idx+1, "has a empty column")
+			} else {
+				transit.PutError("the fetcher has a empty column")
+			}
+			return false
+		}
+		if fetcher.As == "" {
+			fetcher.As = fetcher.Column
+		}
+	}
+	return true
+}
+
 func (transit *Convey) Put(fetcher Fetcher) bool {
+	if !transit.checkFetchers(fetcher) {
+		transit.PutError("can't put column", fetcher.Column)
+		return false
+	}
 	if !transit.takeValues() {
 		transit.PutError("can't put column", fetcher.Column)
 		return false
-	}
-	if fetcher.Column == "" {
-		transit.PutError("the fetcher column is empty")
-		transit.PutError("can't put column", fetcher.Column)
-		return false
-	}
+	}	
 	value, found := transit.values[fetcher.Column]
 	if !found {
 		transit.PutError("there's no column with name", fetcher.Column)
 		transit.PutError("can't put column", fetcher.Column)
 		return false
-	}
-	if fetcher.As == "" {
-		fetcher.As = fetcher.Column
 	}
 	if fetcher.Form == nil {
 		transit.Set(fetcher.As, value)
@@ -164,15 +177,9 @@ func (transit *Convey) Put(fetcher Fetcher) bool {
 }
 
 func (transit *Convey) PutAll(fetchers ...Fetcher) bool {
-	for idx, test_fetcher := range fetchers {
-		if test_fetcher.Column == "" {
-			transit.PutError("the fetcher number", idx+1, "has a empty column")
-			transit.PutError("can't put all values from the row")
-			return false
-		}
-		if test_fetcher.As == "" {
-			test_fetcher.As = test_fetcher.Column
-		}
+	if !transit.checkFetchers(fetchers) {
+		transit.PutError("can't put all values from the row")
+		return false
 	}
 	if transit.Next() {
 		if !transit.takeValues() {
@@ -201,29 +208,20 @@ func (transit *Convey) PutAll(fetchers ...Fetcher) bool {
 }
 
 func (transit *Convey) PutRows(as string, fetchers ...Fetcher) bool {
-	for idx, test_fetcher := range fetchers {
-		if test_fetcher.Column == "" {
-			transit.PutError("the fetcher number", idx+1, "has a empty column")
-			transit.PutError("can't put all values from all rows")
-			return false
-		}
-		if test_fetcher.As == "" {
-			test_fetcher.As = test_fetcher.Column
-		}
+	if !transit.checkFetchers(fetchers) {
+		goto BadError
 	}
 	results := []interface{}{}
 	for transit.Next() {
 		if !transit.takeValues() {
-			transit.PutError("can't put all values from all rows")
-			return false
+			goto BadError
 		}
 		result := map[string]interface{}{}
 		for _, fetcher := range fetchers {
 			value, found := transit.values[fetcher.Column]
 			if !found {
 				transit.PutError("there's no column with name", fetcher.Column)
-				transit.PutError("can't put all values from all rows")
-				return false
+				goto BadError
 			}
 			if fetcher.Form == nil {
 				result[fetcher.As] = value
@@ -234,9 +232,11 @@ func (transit *Convey) PutRows(as string, fetchers ...Fetcher) bool {
 		results = append(results, result)
 	}
 	if transit.HasError() {
-		transit.PutError("can't put all values from all rows")
-		return false
+		goto BadError
 	}
 	transit.Set(as, results)
 	return true
+BadError:
+	transit.PutError("can't put all values from all rows")
+	return false
 }
