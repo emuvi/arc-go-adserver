@@ -31,10 +31,10 @@ func GetLastPreOrders(onTransit *motor.Convey) bool {
 		goto BadError
 	}
 	if !onTransit.PutRows("LasPreOrders",
-		motor.Fetcher{Column: "sent", Form: &motor.Formatter{Type: motor.FormatDate}},
+		motor.Fetcher{Column: "sent", Form: &motor.Style{Type: motor.FormatDate}},
 		motor.Fetcher{Column: "name"},
 		motor.Fetcher{Column: "fantasy"},
-		motor.Fetcher{Column: "total", Form: &motor.Formatter{Type: motor.FormatCurrency}},
+		motor.Fetcher{Column: "total", Form: &motor.Style{Type: motor.FormatCurrency}},
 	) {
 		goto BadError
 	}

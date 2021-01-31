@@ -16,12 +16,12 @@ const (
 	FormatCurrency = "Currency"
 )
 
-type Formatter struct {
+type Style struct {
 	Type FormatType
 	Model string
 }
 
-func (format *Formatter) Format(transit *Convey, value interface{}) string {
+func (format *Style) Format(transit *Convey, value interface{}) string {
 	switch format.Type {
 	case FormatDate:
 		return transit.FormatDate(value)

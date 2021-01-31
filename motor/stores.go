@@ -19,7 +19,7 @@ type aStore struct {
 type Fetcher struct {
 	As     string
 	Column string
-	Form   *Formatter
+	Form   *Style
 }
 
 func openStore(session *aSession, client, user, pass string) error {
