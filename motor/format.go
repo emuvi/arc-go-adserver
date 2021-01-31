@@ -21,6 +21,17 @@ type Formatter struct {
 	Pattern string
 }
 
+func (format *Formatter) Format(transit *Convey, value interface{}) string {
+	switch format.Type {
+	case FormatDate:
+		return transit.FormatDate(value)
+	case FormatCurrency:
+		return transit.FormatCurrency(value)
+	default:
+		return transit.FormatString(value)
+	}
+}
+
 var languageMatcher = language.NewMatcher([]language.Tag{
 	language.Make("pt"),
 	language.Make("en"),

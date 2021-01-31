@@ -15,6 +15,12 @@ type aStore struct {
 	User   string
 }
 
+type Fetcher struct {
+	As     string
+	Column string
+	Form   *Formatter
+}
+
 func openStore(session *aSession, client, user, pass string) error {
 	closeStore(session)
 	storesHost := guide.Configs.GetString("StoreHost", "pointel.pointto.us")
@@ -80,6 +86,9 @@ func (transit *Convey) Next() bool {
 	if transit.rows == nil {
 		transit.PutError("there's no rows from a query")
 		transit.PutError("can't get the next row")
+		fmt.Println("You've tried to get the rows whitout make a query on:")
+		debug.PrintStack()
+
 		return false
 	}
 	transit.values = nil
@@ -127,29 +136,107 @@ func (transit *Convey) Take(column string) (interface{}, error) {
 	return transit.values[column], nil
 }
 
-func (transit *Convey) PutAll() bool {
+func (transit *Convey) Put(fetcher Fetcher) bool {
 	if !transit.takeValues() {
-		transit.PutError("can't put all values from row")
+		transit.PutError("can't put column", fetcher.Column)
 		return false
 	}
-	for name, value := range transit.values {
-		transit.Set(name, value)
+	if fetcher.Column == "" {
+		transit.PutError("the fetcher column is empty")
+		transit.PutError("can't put column", fetcher.Column)
+		return false
+	}
+	value, found := transit.values[fetcher.Column]
+	if !found {
+		transit.PutError("there's no column with name", fetcher.Column)
+		transit.PutError("can't put column", fetcher.Column)
+		return false
+	}
+	if fetcher.As == "" {
+		fetcher.As = fetcher.Column
+	}
+	if fetcher.Form == nil {
+		transit.Set(fetcher.As, value)
+	} else {
+		transit.Set(fetcher.As, fetcher.Form.Format(transit, value))
 	}
 	return true
 }
 
-func (transit *Convey) PutAs(column, as string, format *Formatter) bool {
-	if !transit.takeValues() {
-		transit.PutError("can't put column", column, "as", as)
+func (transit *Convey) PutAll(fetchers ...Fetcher) bool {
+	for idx, test_fetcher := range fetchers {
+		if test_fetcher.Column == "" {
+			transit.PutError("the fetcher number", idx+1, "has a empty column")
+			transit.PutError("can't put all values from the row")
+			return false
+		}
+		if test_fetcher.As == "" {
+			test_fetcher.As = test_fetcher.Column
+		}
+	}
+	if transit.Next() {
+		if !transit.takeValues() {
+			transit.PutError("can't put all values from the row")
+			return false
+		}
+		for _, fetcher := range fetchers {
+			value, found := transit.values[fetcher.Column]
+			if !found {
+				transit.PutError("there's no column with name", fetcher.Column)
+				transit.PutError("can't put all values from the row")
+				return false
+			}
+			if fetcher.Form == nil {
+				transit.Set(fetcher.As, value)
+			} else {
+				transit.Set(fetcher.As, fetcher.Form.Format(transit, value))
+			}
+		}
+	}
+	if transit.HasError() {
+		transit.PutError("can't put all values from the row")
 		return false
 	}
-	value := transit.values[column]
-	if format != nil {
-	}
-	transit.Set(as, )
 	return true
 }
 
-func (transit *Convey) Put(column string, format *Formatter) bool {
-	return transit.PutAs(column, column, format)
+func (transit *Convey) PutRows(as string, fetchers ...Fetcher) bool {
+	for idx, test_fetcher := range fetchers {
+		if test_fetcher.Column == "" {
+			transit.PutError("the fetcher number", idx+1, "has a empty column")
+			transit.PutError("can't put all values from all rows")
+			return false
+		}
+		if test_fetcher.As == "" {
+			test_fetcher.As = test_fetcher.Column
+		}
+	}
+	results := []interface{}{}
+	for transit.Next() {
+		if !transit.takeValues() {
+			transit.PutError("can't put all values from all rows")
+			return false
+		}
+		result := map[string]interface{}{}
+		for _, fetcher := range fetchers {
+			value, found := transit.values[fetcher.Column]
+			if !found {
+				transit.PutError("there's no column with name", fetcher.Column)
+				transit.PutError("can't put all values from all rows")
+				return false
+			}
+			if fetcher.Form == nil {
+				result[fetcher.As] = value
+			} else {
+				result[fetcher.As] = fetcher.Form.Format(transit, value)
+			}
+		}
+		results = append(results, result)
+	}
+	if transit.HasError() {
+		transit.PutError("can't put all values from all rows")
+		return false
+	}
+	transit.Set(as, results)
+	return true
 }
