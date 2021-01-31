@@ -5,6 +5,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"runtime/debug"
 
 	"github.com/jackc/pgx/v4"
 )
@@ -45,7 +46,7 @@ func closeStore(session *aSession) {
 }
 
 func (transit *Convey) Open(client, user, pass string) bool {
-	err := openStore(transit.getSession(), client, user, pass)
+	err := openStore(transit.Session(), client, user, pass)
 	if err != nil {
 		transit.PutError(err.Error())
 		return false
@@ -54,12 +55,12 @@ func (transit *Convey) Open(client, user, pass string) bool {
 }
 
 func (transit *Convey) Close() *Convey {
-	transit.getSession().close()
+	transit.Session().close()
 	return transit
 }
 
 func (transit *Convey) Store() *aStore {
-	result := transit.getSession().store
+	result := transit.Session().store
 	if result == nil {
 		transit.PutError("can't find the store of the session")
 	}
@@ -161,7 +162,7 @@ func (transit *Convey) Put(fetcher Fetcher) bool {
 	if !transit.takeValues() {
 		transit.PutError("can't put column", fetcher.Column)
 		return false
-	}	
+	}
 	value, found := transit.values[fetcher.Column]
 	if !found {
 		transit.PutError("there's no column with name", fetcher.Column)
@@ -177,7 +178,7 @@ func (transit *Convey) Put(fetcher Fetcher) bool {
 }
 
 func (transit *Convey) PutAll(fetchers ...Fetcher) bool {
-	if !transit.checkFetchers(fetchers) {
+	if !transit.checkFetchers(fetchers...) {
 		transit.PutError("can't put all values from the row")
 		return false
 	}
@@ -208,20 +209,23 @@ func (transit *Convey) PutAll(fetchers ...Fetcher) bool {
 }
 
 func (transit *Convey) PutRows(as string, fetchers ...Fetcher) bool {
-	if !transit.checkFetchers(fetchers) {
-		goto BadError
+	if !transit.checkFetchers(fetchers...) {
+		transit.PutError("can't put all values from all rows")
+		return false
 	}
 	results := []interface{}{}
 	for transit.Next() {
 		if !transit.takeValues() {
-			goto BadError
+			transit.PutError("can't put all values from all rows")
+			return false
 		}
 		result := map[string]interface{}{}
 		for _, fetcher := range fetchers {
 			value, found := transit.values[fetcher.Column]
 			if !found {
 				transit.PutError("there's no column with name", fetcher.Column)
-				goto BadError
+				transit.PutError("can't put all values from all rows")
+				return false
 			}
 			if fetcher.Form == nil {
 				result[fetcher.As] = value
@@ -232,11 +236,9 @@ func (transit *Convey) PutRows(as string, fetchers ...Fetcher) bool {
 		results = append(results, result)
 	}
 	if transit.HasError() {
-		goto BadError
+		transit.PutError("can't put all values from all rows")
+		return false
 	}
 	transit.Set(as, results)
 	return true
-BadError:
-	transit.PutError("can't put all values from all rows")
-	return false
 }

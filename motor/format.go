@@ -18,7 +18,7 @@ const (
 
 type Formatter struct {
 	Type FormatType
-	Pattern string
+	Model string
 }
 
 func (format *Formatter) Format(transit *Convey, value interface{}) string {

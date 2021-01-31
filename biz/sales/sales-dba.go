@@ -7,7 +7,6 @@ import (
 )
 
 func GetLastPreOrders(onTransit *motor.Convey) bool {
-	var result []map[string]interface{}
 	if !company.GetPersonOfUser(onTransit) {
 		goto BadError
 	}
@@ -27,23 +26,18 @@ func GetLastPreOrders(onTransit *motor.Convey) bool {
 		ORDER BY 
 			prepedidos.enviado_data DESC,
 			prepedidos.enviado_hora DESC
-		LIMIT 7`, onTransit.Get("PersonOfUser")) {
+		LIMIT 7`, onTransit.Get("PersonOfUser"),
+	) {
 		goto BadError
 	}
-	for onTransit.Next() {
-		values, _ := rows.Values()
-		if len(values) < 4 {
-			onTransit.PutError("can't get the last pre-orders. (wrong number of columns)")
-			return false
-		}
-		row := map[string]interface{}{}
-		row["sent"] = onTransit.FormatDate(values[0])
-		row["name"] = values[1]
-		row["fantasy"] = values[2]
-		row["total"] = onTransit.FormatCurrency(values[3])
-		result = append(result, row)
+	if !onTransit.PutRows("LasPreOrders",
+		motor.Fetcher{Column: "sent", Form: &motor.Formatter{Type: motor.FormatDate}},
+		motor.Fetcher{Column: "name"},
+		motor.Fetcher{Column: "fantasy"},
+		motor.Fetcher{Column: "total", Form: &motor.Formatter{Type: motor.FormatCurrency}},
+	) {
+		goto BadError
 	}
-	onTransit.Set("LastPreOrders", result)
 	return true
 BadError:
 	onTransit.PutError("can't get the last pre-orders")

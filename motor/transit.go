@@ -33,7 +33,7 @@ func Transit(w http.ResponseWriter, r *http.Request) *Convey {
 	}
 }
 
-func (transit *Convey) getSession() *aSession {
+func (transit *Convey) Session() *aSession {
 	if transit.session == nil {
 		transit.session = popSession(transit.response, transit.request)
 	}
@@ -61,16 +61,16 @@ func (transit *Convey) Clear(name string, value interface{}) *Convey {
 }
 
 func (transit *Convey) GetMapped(key string) string {
-	return transit.getSession().get(key)
+	return transit.Session().get(key)
 }
 
 func (transit *Convey) SetMapped(key, value string) *Convey {
-	transit.getSession().set(key, value)
+	transit.Session().set(key, value)
 	return transit
 }
 
 func (transit *Convey) ClearMapped() *Convey {
-	transit.getSession().clear()
+	transit.Session().clear()
 	return transit
 }
 
