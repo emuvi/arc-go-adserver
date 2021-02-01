@@ -7,11 +7,11 @@ import (
 	"fmt"
 	"runtime/debug"
 
-	"github.com/jackc/pgx/v4"
+	"github.com/jackc/pgx/v4/pgxpool"
 )
 
 type aStore struct {
-	DB     *pgx.Conn
+	pool   *pgxpool.Pool
 	Client string
 	User   string
 }
@@ -26,21 +26,21 @@ func openStore(session *aSession, client, user, pass string) error {
 	closeStore(session)
 	storesHost := guide.Configs.GetString("StoreHost", "pointel.pointto.us")
 	storesPort := guide.Configs.GetInt("StorePort", 5432)
-	conn, err := pgx.Connect(context.Background(), fmt.Sprintf("postgresql://%s:%s@%s:%d/%s", user, pass, storesHost, storesPort, client))
+	pool, err := pgxpool.Connect(context.Background(), fmt.Sprintf("postgresql://%s:%s@%s:%d/%s", user, pass, storesHost, storesPort, client))
 	if err != nil {
 		return err
 	}
 	session.mutex.Lock()
 	defer session.mutex.Unlock()
-	session.store = &aStore{DB: conn, Client: client, User: user}
+	session.store = &aStore{pool: pool, Client: client, User: user}
 	return nil
 }
 
 func closeStore(session *aSession) {
 	session.mutex.Lock()
 	defer session.mutex.Unlock()
-	if session.store != nil && session.store.DB != nil {
-		session.store.DB.Close(context.Background())
+	if session.store != nil && session.store.pool != nil {
+		go session.store.pool.Close()
 	}
 	session.store = nil
 }
@@ -55,7 +55,7 @@ func (transit *Convey) Open(client, user, pass string) bool {
 }
 
 func (transit *Convey) Close() *Convey {
-	transit.Session().close()
+	transit.Session().closeStore()
 	return transit
 }
 
@@ -63,20 +63,48 @@ func (transit *Convey) Store() *aStore {
 	result := transit.Session().store
 	if result == nil {
 		transit.PutError("can't find the store of the session")
+		return nil
 	}
 	return result
+}
+
+func (transit *Convey) aquire() *pgxpool.Conn {
+	if transit.link == nil {
+		store := transit.Store()
+		if store == nil {
+			transit.PutError("can't aquire a link")
+			return nil
+		}
+		result, err := store.pool.Acquire(context.Background())
+		if err != nil {
+			transit.PutError(err)
+			transit.PutError("can't aquire a link")
+			return nil
+		}
+		transit.link = result
+	}
+	return transit.link
+}
+
+func (transit *Convey) release() {
+	if transit.link != nil {
+		transit.link.Release()
+	}
 }
 
 func (transit *Convey) Query(sql string, args ...interface{}) bool {
 	transit.rows = nil
 	transit.values = nil
-	store := transit.Store()
-	if store == nil {
+	link := transit.aquire()
+	if link == nil {
+		transit.PutError("can't query the database")
 		return false
 	}
-	rows, err := store.DB.Query(context.Background(), sql, args...)
+	transit.Done()
+	rows, err := link.Query(context.Background(), sql, args...)
 	if err != nil {
 		transit.PutError(err.Error())
+		transit.PutError("can't query the database")
 		return false
 	}
 	transit.rows = rows
@@ -89,11 +117,17 @@ func (transit *Convey) Next() bool {
 		transit.PutError("can't get the next row")
 		fmt.Println("You've tried to get the rows whitout make a query on:")
 		debug.PrintStack()
-
 		return false
 	}
 	transit.values = nil
 	return transit.rows.Next()
+}
+
+func (transit *Convey) Done() {
+	if transit.rows != nil {
+		transit.rows.Close()
+		transit.rows = nil
+	}
 }
 
 func (transit *Convey) tryTakeValues() error {
@@ -137,7 +171,7 @@ func (transit *Convey) Take(column string) (interface{}, error) {
 	return transit.values[column], nil
 }
 
-func (transit *Convey) checkFetchers(fetchers ...Fetcher) bool {
+func (transit *Convey) checkFetchers(fetchers ...*Fetcher) bool {
 	for idx, fetcher := range fetchers {
 		if fetcher.Column == "" {
 			if len(fetchers) > 1 {
@@ -154,7 +188,7 @@ func (transit *Convey) checkFetchers(fetchers ...Fetcher) bool {
 	return true
 }
 
-func (transit *Convey) Put(fetcher Fetcher) bool {
+func (transit *Convey) Put(fetcher *Fetcher) bool {
 	if !transit.checkFetchers(fetcher) {
 		transit.PutError("can't put column", fetcher.Column)
 		return false
@@ -177,7 +211,7 @@ func (transit *Convey) Put(fetcher Fetcher) bool {
 	return true
 }
 
-func (transit *Convey) PutAll(fetchers ...Fetcher) bool {
+func (transit *Convey) PutAll(fetchers ...*Fetcher) bool {
 	if !transit.checkFetchers(fetchers...) {
 		transit.PutError("can't put all values from the row")
 		return false
@@ -208,7 +242,7 @@ func (transit *Convey) PutAll(fetchers ...Fetcher) bool {
 	return true
 }
 
-func (transit *Convey) PutRows(as string, fetchers ...Fetcher) bool {
+func (transit *Convey) PutRows(as string, fetchers ...*Fetcher) bool {
 	if !transit.checkFetchers(fetchers...) {
 		transit.PutError("can't put all values from all rows")
 		return false

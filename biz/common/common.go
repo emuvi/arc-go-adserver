@@ -5,7 +5,7 @@ import (
 	"net/http"
 )
 
-func StartMotor() {
+func StartHandlers() {
 	http.HandleFunc("/biz/ping", handPing)
 	http.HandleFunc("/biz/enter", handEnter)
 	http.HandleFunc("/biz/exit", handExit)

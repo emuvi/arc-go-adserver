@@ -23,5 +23,6 @@ func main() {
 	startCommandLine()
 	port := guide.Configs.GetInt("MotorPort", 80)
 	log.Println("Starting AdServer at port", port, "...")
-	motor.Start(port,	biz.StartMotor)
+	biz.StartHandlers()
+	motor.StartListen(port)
 }

@@ -24,8 +24,9 @@ func GetPersonOfUser(onTransit *motor.Convey) bool {
 			onTransit.PutError(err.Error())
 			goto BadError
 		}
-		result := onTransit.FormatString(value)
+		result = onTransit.FormatString(value)
 		onTransit.SetMapped("PersonOfUser", result)
+		onTransit.Done()
 	}
 	if result != "" {
 		onTransit.Set("PersonOfUser", result)

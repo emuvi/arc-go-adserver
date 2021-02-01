@@ -16,19 +16,19 @@ type aSession struct {
 	lastUsed time.Time
 }
 
-func (session *aSession) get(key string) string {
+func (session *aSession) getMapped(key string) string {
 	session.mutex.Lock()
 	defer session.mutex.Unlock()
 	return session.mapped[key]
 }
 
-func (session *aSession) set(key, value string) {
+func (session *aSession) setMapped(key, value string) {
 	session.mutex.Lock()
 	defer session.mutex.Unlock()
 	session.mapped[key] = value
 }
 
-func (session *aSession) clear() {
+func (session *aSession) clearMapped() {
 	session.mutex.Lock()
 	defer session.mutex.Unlock()
 	for key := range session.mapped {
@@ -36,32 +36,32 @@ func (session *aSession) clear() {
 	}
 }
 
-func (session *aSession) close() {
+func (session *aSession) closeStore() {
 	closeStore(session)
 }
 
 var sessions = map[string]*aSession{}
 var sessionsMutex = sync.Mutex{}
 
-func newSession() *aSession {
+func newSession(withUID string) *aSession {
 	sessionsMutex.Lock()
 	defer sessionsMutex.Unlock()
+	for withUID == "" || sessions[withUID] != nil {
+		withUID = randomString(32)
+	}
 	result := &aSession{
-		uid:      randomString(32),
+		uid:      withUID,
 		mapped:   map[string]string{},
 		store:    nil,
 		mutex:    sync.Mutex{},
 		lastUsed: time.Now(),
 	}
-	for sessions[result.uid] != nil {
-		result.uid = randomString(32)
-	}
-	sessions[result.uid] = result
+	sessions[withUID] = result
 	return result
 }
 
 func createSession(w http.ResponseWriter, r *http.Request) *aSession {
-	result := newSession()
+	result := newSession("")
 	r.Header.Set(sessionHeaderName, result.uid)
 	w.Header().Set(sessionHeaderName, result.uid)
 	return result
@@ -84,8 +84,9 @@ func popSession(w http.ResponseWriter, r *http.Request) *aSession {
 	}
 	session := getSession(sessionUID)
 	if session == nil {
-		return createSession(w, r)
+		session = newSession(sessionUID)
 	}
+	r.Header.Set(sessionHeaderName, session.uid)
 	w.Header().Set(sessionHeaderName, session.uid)
 	return session
 }
@@ -96,8 +97,8 @@ func cleanSessions() {
 	for uid, session := range sessions {
 		elapsed := time.Since(session.lastUsed)
 		if elapsed.Minutes() > 30 {
-			session.clear()
-			session.close()
+			session.clearMapped()
+			session.closeStore()
 			delete(sessions, uid)
 		}
 	}

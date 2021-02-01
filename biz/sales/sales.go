@@ -6,7 +6,7 @@ import (
 	"net/http"
 )
 
-func StartMotor() {
+func StartHandlers() {
 	http.HandleFunc("/biz/sales/desk", handSalesDesk)
 }
 

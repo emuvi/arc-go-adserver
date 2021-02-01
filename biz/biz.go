@@ -6,9 +6,8 @@ import (
 	"adserver/biz/sales"
 )
 
-// StartMotor sets up all the biz handlers
-func StartMotor() {
-	common.StartMotor()
-	company.StartMotor()
-	sales.StartMotor()
+func StartHandlers() {
+	common.StartHandlers()
+	company.StartHandlers()
+	sales.StartHandlers()
 }

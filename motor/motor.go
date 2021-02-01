@@ -6,10 +6,7 @@ import (
 	"strconv"
 )
 
-func Start(port int, handlersStarters ...func()) {
-	for _, handlerStarter := range handlersStarters {
-		handlerStarter()
-	}
+func StartListen(onPort int) {
 	go maintainSessions()
-	log.Panic(http.ListenAndServe(":"+strconv.Itoa(port), nil))
+	log.Panic(http.ListenAndServe(":"+strconv.Itoa(onPort), nil))
 }

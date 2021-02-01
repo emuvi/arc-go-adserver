@@ -7,12 +7,14 @@ import (
 	"runtime/debug"
 
 	"github.com/jackc/pgx/v4"
+	"github.com/jackc/pgx/v4/pgxpool"
 )
 
 type Convey struct {
 	response http.ResponseWriter
 	request  *http.Request
 	session  *aSession
+	link     *pgxpool.Conn
 	rows     pgx.Rows
 	values   map[string]interface{}
 	err      *aError
@@ -25,6 +27,7 @@ func Transit(w http.ResponseWriter, r *http.Request) *Convey {
 		response: w,
 		request:  r,
 		session:  nil,
+		link:     nil,
 		rows:     nil,
 		values:   nil,
 		err:      nil,
@@ -61,16 +64,16 @@ func (transit *Convey) Clear(name string, value interface{}) *Convey {
 }
 
 func (transit *Convey) GetMapped(key string) string {
-	return transit.Session().get(key)
+	return transit.Session().getMapped(key)
 }
 
 func (transit *Convey) SetMapped(key, value string) *Convey {
-	transit.Session().set(key, value)
+	transit.Session().setMapped(key, value)
 	return transit
 }
 
 func (transit *Convey) ClearMapped() *Convey {
-	transit.Session().clear()
+	transit.Session().clearMapped()
 	return transit
 }
 
@@ -88,6 +91,8 @@ func (transit *Convey) Send() {
 		debug.PrintStack()
 		return
 	}
+	transit.Done()
+	transit.release()
 	transit.response.Header().Set("Content-Type", "application/json")
 	encoder := json.NewEncoder(transit.response)
 	if transit.err == nil {

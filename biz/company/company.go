@@ -1,4 +1,4 @@
 package company
 
-func StartMotor() {
+func StartHandlers() {
 }
