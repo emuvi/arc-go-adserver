@@ -2,6 +2,7 @@ package common
 
 import (
 	"adserver/motor"
+	"encoding/json"
 	"net/http"
 )
 
@@ -38,19 +39,24 @@ func handEnter(w http.ResponseWriter, r *http.Request) {
 
 func handConnect(w http.ResponseWriter, r *http.Request) {
 	transit := motor.Transit(w, r)
-	client := r.FormValue("client")
-	user := r.FormValue("user")
-	pass := r.FormValue("pass")
-	if transit.Open(client, user, pass) {
-		transit.SetMapped("user_logged", "yes")
-		transit.SetMapped("user_logged_name", user)
-		transit.SetMapped("user_logged_client", client)
-		transit.Set("enter", "success")
-	} else {
-		transit.SetMapped("user_logged", "no")
-		transit.SetMapped("user_logged_name", "")
-		transit.SetMapped("user_logged_client", "")
-		transit.PutError("can't hand the entrance")
+	if r.Method == "POST" {
+		received := struct {
+			Client string
+			User   string
+			Pass   string
+		}{}
+		json.NewDecoder(r.Body).Decode(&received)
+		if transit.Open(received.Client, received.User, received.Pass) {
+			transit.SetMapped("user_logged", "yes")
+			transit.SetMapped("user_logged_name", received.User)
+			transit.SetMapped("user_logged_client", received.Client)
+			transit.Set("enter", "success")
+		} else {
+			transit.SetMapped("user_logged", "no")
+			transit.SetMapped("user_logged_name", "")
+			transit.SetMapped("user_logged_client", "")
+			transit.PutError("can't hand the entrance")
+		}
 	}
 	transit.Send()
 }

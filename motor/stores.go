@@ -24,7 +24,7 @@ type Fetcher struct {
 
 func openStore(session *aSession, client, user, pass string) error {
 	closeStore(session)
-	storesHost := guide.Configs.GetString("StoreHost", "pointel.pointto.us")
+	storesHost := guide.Configs.GetString("StoreHost", "192.168.0.50")
 	storesPort := guide.Configs.GetInt("StorePort", 5432)
 	pool, err := pgxpool.Connect(context.Background(), fmt.Sprintf("postgresql://%s:%s@%s:%d/%s", user, pass, storesHost, storesPort, client))
 	if err != nil {
