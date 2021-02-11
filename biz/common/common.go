@@ -6,6 +6,7 @@ import (
 	"net/http"
 )
 
+// StartHandlers starts all the handlers on common.
 func StartHandlers() {
 	http.HandleFunc("/biz/ping", handPing)
 	http.HandleFunc("/biz/enter", handEnter)
@@ -13,9 +14,11 @@ func StartHandlers() {
 	http.HandleFunc("/biz/exit", handExit)
 }
 
-func CheckLogged(ofTransit *motor.Convey) bool {
-	if ofTransit.GetMapped("user_logged") != "yes" {
-		ofTransit.PutError("there's no user logged")
+// CheckConnected checks if sessions is connected to a database,
+// puts an error and returns false if not.
+func CheckConnected(transit *motor.Convey) bool {
+	if transit.GetMapped("user_connected") != "yes" {
+		transit.PutError("there's no user logged")
 		return false
 	}
 	return true
@@ -47,14 +50,14 @@ func handConnect(w http.ResponseWriter, r *http.Request) {
 		}{}
 		json.NewDecoder(r.Body).Decode(&received)
 		if transit.Open(received.Client, received.User, received.Pass) {
-			transit.SetMapped("user_logged", "yes")
-			transit.SetMapped("user_logged_name", received.User)
-			transit.SetMapped("user_logged_client", received.Client)
+			transit.SetMapped("user_connected", "yes")
+			transit.SetMapped("user_connected_name", received.User)
+			transit.SetMapped("user_connected_client", received.Client)
 			transit.Set("enter", "success")
 		} else {
-			transit.SetMapped("user_logged", "no")
-			transit.SetMapped("user_logged_name", "")
-			transit.SetMapped("user_logged_client", "")
+			transit.SetMapped("user_connected", "no")
+			transit.SetMapped("user_connected_name", "")
+			transit.SetMapped("user_connected_client", "")
 			transit.PutError("can't hand the entrance")
 		}
 	}

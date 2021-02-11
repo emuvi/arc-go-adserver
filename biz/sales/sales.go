@@ -12,7 +12,7 @@ func StartHandlers() {
 
 func handSalesDesk(w http.ResponseWriter, r *http.Request) {
 	transit := motor.Transit(w, r)
-	if !common.CheckLogged(transit) {
+	if !common.CheckConnected(transit) {
 		transit.PutError("can't hand the sales desk").Send()
 		return
 	}
