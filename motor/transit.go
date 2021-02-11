@@ -93,6 +93,8 @@ func (transit *Convey) Send() {
 	}
 	transit.Done()
 	transit.release()
+	transit.response.Header().Set("Access-Control-Allow-Origin", "*")
+	transit.response.Header().Set("Access-Control-Allow-Headers", "*")
 	transit.response.Header().Set("Content-Type", "application/json")
 	encoder := json.NewEncoder(transit.response)
 	if transit.err == nil {

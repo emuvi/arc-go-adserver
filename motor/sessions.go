@@ -16,6 +16,10 @@ type aSession struct {
 	lastUsed time.Time
 }
 
+func (session *aSession) GetUID() string {
+	return session.uid
+}
+
 func (session *aSession) getMapped(key string) string {
 	session.mutex.Lock()
 	defer session.mutex.Unlock()

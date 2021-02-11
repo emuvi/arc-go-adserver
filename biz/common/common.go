@@ -8,6 +8,7 @@ import (
 func StartHandlers() {
 	http.HandleFunc("/biz/ping", handPing)
 	http.HandleFunc("/biz/enter", handEnter)
+	http.HandleFunc("/biz/connect", handConnect)
 	http.HandleFunc("/biz/exit", handExit)
 }
 
@@ -21,11 +22,21 @@ func CheckLogged(ofTransit *motor.Convey) bool {
 
 func handPing(w http.ResponseWriter, r *http.Request) {
 	transit := motor.Transit(w, r)
-	transit.Set("ping", "pong")
+	if r.Method == "GET" {
+		transit.Set("ping", "pong")
+	}
 	transit.Send()
 }
 
 func handEnter(w http.ResponseWriter, r *http.Request) {
+	transit := motor.Transit(w, r)
+	if r.Method == "GET" {
+		transit.Set("uid", transit.Session().GetUID())
+	}
+	transit.Send()
+}
+
+func handConnect(w http.ResponseWriter, r *http.Request) {
 	transit := motor.Transit(w, r)
 	client := r.FormValue("client")
 	user := r.FormValue("user")
