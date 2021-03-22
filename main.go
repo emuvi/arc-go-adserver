@@ -12,7 +12,7 @@ import (
 func startCommandLine() {
 	guide.Commands.Add(guide.Command("Production", true, "-p", "--production"))
 	guide.Commands.Add(guide.Command("Speed", false, "-s", "--speed").DefaultValue("8"))
-	guide.Commands.Add(guide.Command("MotorPort", false, "-mp", "--motor-port").DefaultValue("80"))
+	guide.Commands.Add(guide.Command("MotorPort", false, "-mp", "--motor-port").DefaultValue("5436"))
 	guide.Commands.Add(guide.Command("StoreHost", false, "-sh", "--store-host").DefaultValue("pointel.pointto.us"))
 	guide.Commands.Add(guide.Command("StorePort", false, "-sp", "--store-port").DefaultValue("5432"))
 	guide.Commands.Parse().PutOnConfigs()
